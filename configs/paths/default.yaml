@@ -1,0 +1,2 @@
+root_dir: ${oc.env:PROJECT_ROOT}
+model_dir: /models

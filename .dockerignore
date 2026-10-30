@@ -1,0 +1,9 @@
+.git
+.venv
+.env
+outputs
+model
+**/__pycache__
+*.py[oc]
+*.wav
+.DS_Store

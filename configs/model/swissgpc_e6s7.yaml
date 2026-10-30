@@ -1,0 +1,4 @@
+name: XTTS v2 SwissGPC epoch 6 subset 7
+swiss_dir: ${paths.model_dir}/GPT_XTTS_v2.0_SwissGPC_epoch_6_subset_7
+base_dir: ${paths.model_dir}/XTTS_v2.0_original_model_files
+languages: [ch_be, ch_bs, ch_gr, ch_in, ch_os, ch_vs, ch_zh, de]

@@ -1,0 +1,54 @@
+[project]
+name = "globi"
+version = "0.1.0"
+description = "Swiss German speaker anonymization as a queued service"
+readme = "README.md"
+authors = [
+    { name = "Felix Saaro", email = "saaf@zhaw.ch" }
+]
+# the anonymizer (coqui fork) requires < 3.12
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "hydra-core>=1.3.8",
+    "omegaconf>=2.3.1",
+    "redis>=5",
+    "rootutils>=1.0.7",
+    "soundfile>=0.13",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.115",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.30",
+]
+worker = [
+    "coqui-tts",
+    "torch==2.15.0",
+    # torchaudio >= 2.9 loads audio through torchcodec
+    "torchcodec>=0.12",
+]
+
+[project.scripts]
+globi-gateway = "globi.api:main"
+globi-worker = "globi.worker:main"
+
+[tool.uv]
+# the anonymizer pins torch 2.6, which has no kernels for the DGX Spark's Blackwell GPU
+override-dependencies = [
+    "torch==2.15.0",
+    "torchaudio>=2.11",
+]
+
+[tool.uv.sources]
+coqui-tts = { git = "https://github.com/rm00cr/coqui-tts", rev = "f9129c21ec88567d40b5dba5bf95b4777fadbdc3" }
+torch = [{ index = "pytorch-cu132", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"

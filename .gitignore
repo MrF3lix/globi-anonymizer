@@ -1,0 +1,11 @@
+__pycache__/
+*.py[oc]
+.venv*
+.env
+outputs/
+model/**
+*.wav
+.DS_Store
+
+
+outputs/

@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - paths: default
+  - model: swissgpc_e6s7
+
+
+redis_url: ${oc.env:REDIS_URL,redis://localhost:6379/0}
+
+server:
+  host: 127.0.0.1
+  port: 8000
+
+jobs:
+  max_queued: 1000
+  result_ttl_seconds: 86400
+
+limits:
+  max_target_seconds: 27
+  max_reference_seconds: 60

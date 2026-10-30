@@ -1,0 +1,58 @@
+name: globi
+
+services:
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "${REDIS_MAXMEMORY:-8gb}", "--maxmemory-policy", "volatile-ttl"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  gateway:
+    build:
+      context: .
+      args:
+        EXTRAS: "--extra api"
+    image: globi-gateway
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    command: ["globi-gateway", "server.host=0.0.0.0", "server.port=8000"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+    image: globi-worker
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ${MODEL_DIR:-/models}:/models:ro
+      - cache:/home/app/.cache
+    command: ["globi-worker", "device=${DEVICE:-cuda}"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: ${WORKERS:-1}
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  redis-data:
+  cache:
