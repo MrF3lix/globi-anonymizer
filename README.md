@@ -18,6 +18,7 @@ deleted.
 | `GET /jobs/{id}` | status (`queued`, `running`, `completed`, `failed`), the transcript used, error |
 | `GET /jobs/{id}/result.wav` | the anonymized recording |
 | `DELETE /jobs/{id}` | delete the job and its audio; a queued job is skipped |
+| `GET /models` | models loaded by the workers, with their dialects and live worker count |
 | `GET /health` | live workers and queued jobs |
 
 `language` is the dialect the output is spoken in: `ch_be`, `ch_bs`, `ch_gr`, `ch_in`,

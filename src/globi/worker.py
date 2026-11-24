@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 import signal
@@ -26,17 +27,24 @@ log = logging.getLogger(__name__)
 class Worker:
     def __init__(self, cfg: DictConfig, engine: Engine):
         self.cfg = cfg.worker
+        self.model_cfg = cfg.model
+        self.model = cfg.model.id
         self.engine = engine
         self.name = f"{socket.gethostname()}-{os.getpid()}"
         self.r = redis.Redis.from_url(cfg.redis_url, decode_responses=True)
         self.rb = redis.Redis.from_url(cfg.redis_url)  # binary values (audio)
         self._stop = threading.Event()
 
+    def _register_model(self):
+        # the gateway learns which models are loaded, and their dialects, from this entry
+        info = {"id": self.model, "name": self.model_cfg.name, "languages": dict(self.model_cfg.languages)}
+        self.r.hset(jobs.MODELS_KEY, self.model, json.dumps(info))
+
     def _heartbeat_loop(self):
         # separate thread, so a long job doesn't make the worker look dead in /health
         ttl = self.cfg.heartbeat_ttl_seconds
         while not self._stop.is_set():
-            self.r.set(jobs.worker_key(self.name), time.time(), ex=ttl)
+            self.r.set(jobs.worker_key(self.model, self.name), time.time(), ex=ttl)
             self._stop.wait(ttl / 3)
 
     def _next_task(self):
@@ -85,6 +93,7 @@ class Worker:
         except redis.ResponseError as e:
             if "BUSYGROUP" not in str(e):
                 raise
+        self._register_model()
         threading.Thread(target=self._heartbeat_loop, daemon=True).start()
         log.info(f"Worker {self.name} ready")
         try:
@@ -102,7 +111,7 @@ class Worker:
                     time.sleep(2)
         finally:
             self._stop.set()
-            self.r.delete(jobs.worker_key(self.name))
+            self.r.delete(jobs.worker_key(self.model, self.name))
 
 
 @hydra.main(version_base="1.3", config_path=CONFIG_PATH, config_name="worker.yaml")

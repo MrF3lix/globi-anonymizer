@@ -1,4 +1,5 @@
 import io
+import json
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -12,12 +13,25 @@ import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from omegaconf import DictConfig
+from pydantic import BaseModel
 
 from globi import jobs
 
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 CONFIG_PATH = str(Path(__file__).resolve().parents[2] / "configs")
+
+
+class Language(BaseModel):
+    code: str
+    name: str
+
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+    languages: list[Language]
+    workers: int
 
 
 def create_app(cfg: DictConfig) -> FastAPI:
@@ -113,10 +127,22 @@ def create_app(cfg: DictConfig) -> FastAPI:
         """Delete a job and its audio; a queued job is skipped by the workers."""
         await app.state.r.delete(*(jobs.job_key(job_id, part) for part in (None, "target", "reference", "result")))
 
+    async def worker_count(model: str = "*") -> int:
+        return len([k async for k in app.state.r.scan_iter(match=jobs.worker_pattern(model))])
+
+    @app.get("/models", response_model=list[ModelInfo])
+    async def models():
+        """Models registered by the workers, with their dialects and live worker count."""
+        entries = await app.state.r.hgetall(jobs.MODELS_KEY)
+        infos = [json.loads(info) for info in entries.values()]
+        return [ModelInfo(id=m["id"], name=m["name"],
+                          languages=[Language(code=c, name=n) for c, n in m["languages"].items()],
+                          workers=await worker_count(m["id"]))
+                for m in infos]
+
     @app.get("/health")
     async def health():
-        workers = [k async for k in app.state.r.scan_iter(match=jobs.WORKER_PATTERN)]
-        return {"status": "ok", "workers": len(workers), "queued": await queued()}
+        return {"status": "ok", "workers": await worker_count(), "queued": await queued()}
 
     return app
 
