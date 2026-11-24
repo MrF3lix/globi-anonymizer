@@ -1,5 +1,6 @@
 import io
 import json
+import secrets
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -85,6 +86,8 @@ def create_app(cfg: DictConfig) -> FastAPI:
         reference_wav: UploadFile = File(..., description="Donor voice; the output sounds like this speaker"),
         language: str = Form(..., description=f"Dialect of the output: {', '.join(languages)}"),
         text: str | None = Form(None, description="Standard German transcript of target_wav; Whisper is used if omitted"),
+        seed: int | None = Form(None, ge=0, lt=2**32, description="Random seed; random if omitted. "
+                                                                   "The same inputs and seed reproduce a result"),
     ):
         if language not in languages:
             raise HTTPException(422, f"language must be one of {languages}")
@@ -95,7 +98,7 @@ def create_app(cfg: DictConfig) -> FastAPI:
 
         job_id = uuid.uuid4().hex
         job = {"id": job_id, "status": "queued", "language": language, "text": (text or "").strip(),
-               "created_at": time.time()}
+               "seed": seed if seed is not None else secrets.randbelow(2**31), "created_at": time.time()}
         ttl = cfg.jobs.result_ttl_seconds
         pipe = app.state.rb.pipeline()
         pipe.hset(jobs.job_key(job_id), mapping=job)

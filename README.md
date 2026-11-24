@@ -14,7 +14,7 @@ deleted.
 
 | Endpoint | |
 |---|---|
-| `POST /jobs` | multipart: `target_wav` (≤ 27s), `reference_wav` (the donor), `language`, optional `text`. Returns `202` with the job |
+| `POST /jobs` | multipart: `target_wav` (≤ 27s), `reference_wav` (the donor), `language`, optional `text`, optional `seed` (random if omitted, stored on the job). Returns `202` with the job |
 | `GET /jobs/{id}` | status (`queued`, `running`, `completed`, `failed`), the transcript used, error |
 | `GET /jobs/{id}/result.wav` | the anonymized recording |
 | `DELETE /jobs/{id}` | delete the job and its audio; a queued job is skipped |

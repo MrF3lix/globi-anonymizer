@@ -71,7 +71,9 @@ class Worker:
             reference = self.rb.get(jobs.job_key(job_id, "reference"))
             if target is None or reference is None:
                 raise RuntimeError("input recordings expired")
-            wav, sr, transcript = self.engine.anonymize(target, reference, job["language"], job.get("text") or None)
+            seed = int(job["seed"]) if job.get("seed") else None  # jobs queued before seeds existed
+            wav, sr, transcript = self.engine.anonymize(target, reference, job["language"],
+                                                        job.get("text") or None, seed)
 
             buf = io.BytesIO()
             sf.write(buf, wav, sr, format="WAV", subtype="PCM_16")

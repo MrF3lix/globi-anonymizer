@@ -1,4 +1,5 @@
 """The anonymizer with the Swiss German checkpoint. The only module that imports it."""
+import random
 import tempfile
 from pathlib import Path
 
@@ -25,6 +26,14 @@ def assemble_model_dir(model_cfg) -> Path:
     return model_dir
 
 
+def set_seed(seed: int):
+    import torch
+
+    random.seed(seed)
+    np.random.seed(seed % 2**32)
+    torch.manual_seed(seed)
+
+
 class Engine:
     def __init__(self, model_cfg, device: str = "auto", whisper_model: str = "small"):
         from anonymizer import Anonymizer
@@ -43,8 +52,12 @@ class Engine:
             raise RuntimeError(f"vocab.json has no token for {missing}; is swiss_dir the Swiss checkpoint?")
 
     def anonymize(self, target: bytes, reference: bytes, language: str,
-                  text: str | None = None) -> tuple[np.ndarray, int, str]:
+                  text: str | None = None, seed: int | None = None) -> tuple[np.ndarray, int, str]:
         """Return (waveform, sample rate, transcript used)."""
+        if seed is not None:
+            # the "single" XTTS pass is deterministic; the seed matters for Whisper's
+            # temperature fallback and for any sampling a future mode adds
+            set_seed(seed)
         with tempfile.TemporaryDirectory() as tmp:
             target_path, reference_path = Path(tmp, "target.wav"), Path(tmp, "reference.wav")
             target_path.write_bytes(target)
